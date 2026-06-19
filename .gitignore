@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Local cache database
+backend/data/*.sqlite
+backend/data/*.sqlite-journal
+backend/data/*.db
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
