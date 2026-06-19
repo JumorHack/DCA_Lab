@@ -113,7 +113,7 @@ export default function App() {
       <header className="mx-auto max-w-7xl px-5 pt-10 pb-6">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="bg-gradient-to-r from-sky-300 via-white to-violet-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
-            定投收益回测
+            DCA Lab
           </h1>
           <p className="mt-2 text-sm text-slate-400">
             A股 · 港股 · 美股 · ETF 月度定投模拟，支持按金额/按股数、分红再投入或不复投，数据本地缓存。

@@ -1,4 +1,4 @@
-"""FastAPI application entry point for the DCA backtest service."""
+"""FastAPI application entry point for DCA Lab."""
 from __future__ import annotations
 
 from fastapi import FastAPI
@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import db
 from .api import search, backtest
 
-app = FastAPI(title="DCA 定投回测", version="1.0.0")
+app = FastAPI(title="DCA Lab", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
