@@ -273,7 +273,11 @@ def _fetch_history(market: str, code: str, ak_symbol: Optional[str], start_iso: 
     # 会使按真实成交价的手数/收益失真, 故 A股/ETF 不接 Yahoo, 仅在港股/美股兜底。
     if market in ("a", "etf"):
         sources = ["eastmoney", "sina"]
-    else:  # hk / us
+    elif market == "us":
+        # 东财美股历史需要带交易所前缀的代码(如 105.AAPL); 只有 ticker 时跳过东财, 直接走新浪/Yahoo。
+        has_em_prefix = bool(ak_symbol and "." in ak_symbol and ak_symbol.split(".", 1)[0].isdigit())
+        sources = (["eastmoney"] if has_em_prefix else []) + ["sina", "yfinance"]
+    else:  # hk
         sources = ["eastmoney", "sina", "yfinance"]
     if os.environ.get("PREFER_YFINANCE", "").strip().lower() in ("1", "true", "yes") and "yfinance" in sources:
         sources = ["yfinance"] + [s for s in sources if s != "yfinance"]
@@ -533,16 +537,23 @@ def resolve_instrument(market: str, code: str) -> Dict[str, Any]:
         found = db.get_instrument(market, ticker) or db.find_instrument_by_ak_symbol(market, code)
         if found:
             return found
-        ensure_instruments(market)
-        found = db.get_instrument(market, ticker) or db.find_instrument_by_ak_symbol(market, code)
-        if found:
-            return found
-        resolved = _resolve_by_name(market, code)
-        if resolved:
-            return resolved
-        if all(ord(c) < 128 for c in ticker) and ticker.replace(".", "").replace("-", "").isalnum():
+        looks_like_ticker = all(ord(c) < 128 for c in ticker) and ticker.replace(".", "").replace("-", "").isalnum()
+        if looks_like_ticker:
+            # 干净 ticker 且未缓存: 直接使用, 不去下载美股清单(清单接口被限流时会很慢);
+            # 缺东财前缀时 get_history 会自动跳过东财, 走新浪/Yahoo。
             return {"market": market, "code": ticker, "name": ticker, "lot": cfg.default_lot,
                     "currency": cfg.currency, "ak_symbol": ticker}
+        # 输入更像名称(如 "Apple") 才下载清单做搜索
+        try:
+            ensure_instruments(market)
+            found = db.get_instrument(market, ticker) or db.find_instrument_by_ak_symbol(market, code)
+            if found:
+                return found
+            resolved = _resolve_by_name(market, code)
+            if resolved:
+                return resolved
+        except Exception:
+            pass
         raise ValueError(f"未找到美股「{code}」，请输入正确代码(如 AAPL)或从下拉中选择")
 
     # A股 / 港股 / ETF
@@ -554,7 +565,10 @@ def resolve_instrument(market: str, code: str) -> Dict[str, Any]:
     if code.isdigit():  # 纯数字代码, 直接用(名称可能未缓存)
         return {"market": market, "code": code, "name": code, "lot": cfg.default_lot,
                 "currency": cfg.currency, "ak_symbol": code}
-    resolved = _resolve_by_name(market, code)  # 当作名称解析
+    try:
+        resolved = _resolve_by_name(market, code)  # 当作名称解析
+    except Exception:
+        resolved = None
     if resolved:
         return resolved
     raise ValueError(f"未找到「{code}」对应的标的，请输入正确代码(如 600036)或从下拉中选择")
